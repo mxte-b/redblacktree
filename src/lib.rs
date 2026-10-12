@@ -1,4 +1,4 @@
-use std::{mem::swap, panic, process::id, vec};
+use std::{mem::swap, panic, vec};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum RbColor {
@@ -73,6 +73,12 @@ impl RbTree {
     }
 
     fn set_parent_index(&mut self, idx: usize, value: Option<usize>) {
+        if value.is_some_and(|v| v >= self.nodes.len()) {
+            panic!("invalid index");
+        }
+        
+        self.get_mut(idx).parent = value;
+
         self.get_parent_idx(idx).and_then(|p_idx| {
             self.nodes.get_mut(p_idx).and_then(|e| {
                 e.parent = value;
@@ -253,4 +259,83 @@ impl RbTree {
         self.rb_insert_fix(idx);
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn get_key(tree: &RbTree, idx: usize) -> u32 {
+        tree.nodes.get(idx)
+            .expect("invalid index")
+            .key
+    }
+
+    fn create_tree(values: &[u32]) -> RbTree {
+        let mut tree = RbTree::new();
+
+        for value in values {
+            tree.tree_insert(*value);
+        }
+
+        tree
+    }
+
+    #[test]
+    pub fn tree_insert_test() {
+        let tree = create_tree(&[5, 3, 4]);
+
+        let five = tree.nodes.get(0).unwrap();
+        let five_l = five.left.unwrap();
+        let five_lr=tree.nodes.get(five_l).unwrap().right.unwrap();
+
+        assert_eq!(five.key, 5);
+        assert_eq!(five.right, None);
+        assert_eq!(get_key(&tree, five_l), 3);
+        assert_eq!(get_key(&tree, five_lr), 4);
+    }
+
+    #[test]
+    pub fn get_parent() {
+        let tree = create_tree(&[1, 2]);
+
+        let one = tree.nodes.get(0).unwrap();
+        let two = tree.nodes.get(one.right.unwrap()).unwrap();
+
+        assert_eq!(two.parent, tree.get_parent_idx(one.right.unwrap()));
+    }
+
+    #[test]
+    pub fn set_parent() {
+        let mut tree = create_tree(&[2, 1, 3]);
+
+        let idx_3 = tree.get_child_idx(0, ChildType::Right).unwrap();
+        let idx_2 = tree.get_child_idx(0, ChildType::Left).unwrap();
+        let el_3 = tree.nodes.get(idx_3).unwrap();
+
+        // Change parent of 3 from 1 to 2
+        tree.set_parent_index(idx_3, Some(idx_2));
+    }
+
+    #[test]
+    pub fn get_child() {
+        let tree = create_tree(&[1, 2]);
+
+        let two = tree.get_child_idx(0, ChildType::Right).unwrap();
+
+        assert_eq!(two, 1);
+        assert_eq!(get_key(&tree, two), 2);
+    }
+
+    #[test]
+    pub fn get_color() {
+        let mut tree = create_tree(&[1, 2]);
+        let two = tree.get_mut(1);
+
+        assert_eq!(two.color, RbColor::Red);
+
+        two.color = RbColor::Black;
+
+        assert_eq!(two.color, RbColor::Black);
+    }
 }
