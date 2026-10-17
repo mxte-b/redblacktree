@@ -6,9 +6,19 @@ pub enum RbColor {
     Black
 }
 
-pub enum ChildType {
-    Left,
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum Direction {
+    Left, 
     Right
+}
+
+impl Direction {
+    fn invert(&self) -> Direction {
+        match self {
+            Self::Left => Self::Right,
+            Self::Right => Self::Left
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -41,17 +51,29 @@ impl RbTree {
             .parent
     }
 
-    fn get_child_idx(&self, idx: usize, child_type: ChildType) -> Option<usize> {
+    fn get_child_idx(&self, idx: usize, direction: Direction) -> Option<usize> {
         self.nodes.get(idx).and_then(|e| {
-            match child_type {
-                ChildType::Left => e.left,
-                ChildType::Right => e.right
+            match direction {
+                Direction::Left => e.left,
+                Direction::Right => e.right
             }
         })
     }
 
     fn get_color(&self, idx: usize) -> Option<RbColor> {
         self.nodes.get(idx).map(|e| e.color)
+    }
+
+    fn classify(&self, idx: usize) -> Option<Direction> {
+        self.nodes.get(idx).and_then(|e| {
+            if let Some(parent) = e.parent.and_then(|i| self.nodes.get(i)){
+                let child_type = if parent.left == Some(idx) { Direction::Left } else { Direction::Right };
+                return Some(child_type);
+            }
+            else {
+                return None;
+            }
+        })
     }
 
     fn set_color(&mut self, idx: usize, color: RbColor) {
@@ -61,11 +83,11 @@ impl RbTree {
         });
     }
 
-    fn set_child_index(&mut self, idx: usize, value: Option<usize>, child_type: ChildType) {
+    fn set_child_index(&mut self, idx: usize, value: Option<usize>, direction: Direction) {
         self.nodes.get_mut(idx).and_then(|e| {
-            match child_type {
-                ChildType::Left => e.left = value,
-                ChildType::Right => e.right = value
+            match direction {
+                Direction::Left => e.left = value,
+                Direction::Right => e.right = value
             }
 
             Some(())
@@ -78,14 +100,6 @@ impl RbTree {
         }
         
         self.get_mut(idx).parent = value;
-
-        self.get_parent_idx(idx).and_then(|p_idx| {
-            self.nodes.get_mut(p_idx).and_then(|e| {
-                e.parent = value;
-
-                Some(())
-            })
-        });
     }
 
     fn is_root(&self, idx: usize) -> bool {
@@ -97,42 +111,37 @@ impl RbTree {
         }
     }
 
-    fn rotate_left(&mut self, idx: usize) {
-        let r_idx = self.get_child_idx(idx, ChildType::Right)
+    fn rotate(&mut self, idx: usize, direction: Direction) {
+        let other_direction = direction.invert();
+
+        let r_idx = self.get_child_idx(idx, other_direction)
             .expect("left rotation only works if there is a right child");
 
-        if let Some(i) = self.get_child_idx(r_idx, ChildType::Left) {
+        if let Some(i) = self.get_child_idx(r_idx, direction) {
             // Move left subtree of r_idx to idx
             self.set_parent_index(i, Some(idx));
-            self.set_child_index(idx, Some(i), ChildType::Right);
+            self.set_child_index(idx, Some(i), other_direction);
+        }
+        else {
+            self.set_child_index(idx, None, other_direction);
+        }
 
-            let g_idx = self.get_parent_idx(idx);
-            self.set_parent_index(r_idx, g_idx);
+        let g_idx = self.get_parent_idx(idx);
+        self.set_parent_index(r_idx, g_idx);
 
-            if let Some(j) = g_idx {
-                // Update child values for grandparent
-                if self.get_child_idx(j, ChildType::Left)
-                    .is_some_and(|k| k == r_idx) {
-                    self.set_child_index(j, Some(r_idx), ChildType::Left);
-                }
-                else {
-                    self.set_child_index(j, Some(r_idx), ChildType::Right);
-                }
-            }
-            else {
-                self.root = Some(r_idx);
+        if let Some(j) = g_idx {
+            // Update child values for grandparent
+            match self.classify(r_idx) {
+                Some(t) => self.set_child_index(j, Some(r_idx), t),
+                None => { panic!("Right subtree was expected to have a parent") }
             }
         }
         else {
-            self.set_child_index(idx, None, ChildType::Right);
+            self.root = Some(r_idx);
         }
 
-        self.set_child_index(r_idx, Some(idx), ChildType::Left);
+        self.set_child_index(r_idx, Some(idx), direction);
         self.set_parent_index(idx, Some(r_idx));
-    }
-
-    fn rotate_right(&mut self, idx: usize) {
-
     }
 
     fn tree_insert(&mut self, key: u32) -> usize {
@@ -206,12 +215,12 @@ impl RbTree {
             // Can unwrap because of the red-black properties
             let g_idx = self.get_parent_idx(p_idx).unwrap();
 
-            if self.get_child_idx(g_idx, ChildType::Left)
+            if self.get_child_idx(g_idx, Direction::Left)
                 .is_some_and(|i| i == p_idx) {
                 // The parent is a left child
                 
                 // Get right uncle
-                let u_idx = self.get_child_idx(g_idx, ChildType::Right);
+                let u_idx = self.get_child_idx(g_idx, Direction::Right);
                 let u_color = u_idx.and_then(|i| self.get_color(i));
                 
                 if u_color.is_some_and(|c| c == RbColor::Red) {
@@ -236,16 +245,16 @@ impl RbTree {
                     p_idx = self.get_parent_idx(g_idx).unwrap_or(g_idx);
                 }
                 else {
-                    if self.get_child_idx(p_idx, ChildType::Right)
+                    if self.get_child_idx(p_idx, Direction::Right)
                         .is_some_and(|i| i == idx) {
                         // If the node is a right child, rotate left
                         swap(&mut idx, &mut p_idx);
-                        self.rotate_left(idx);
+                        self.rotate(idx, Direction::Left);
                     }
                     
                     self.set_color(p_idx, RbColor::Black);
                     self.set_color(g_idx, RbColor::Red);
-                    self.rotate_right(g_idx);
+                    self.rotate(g_idx, Direction::Right);
                 }
             }
             else {
@@ -296,6 +305,22 @@ mod tests {
     }
 
     #[test]
+    pub fn classify() {
+        let tree = create_tree(&[1,3,2]);
+        let idx_3 = tree.get_child_idx(0, Direction::Right).unwrap();
+        let idx_2 = tree.get_child_idx(idx_3, Direction::Left).unwrap();
+
+        // 1 is root
+        assert_eq!(tree.classify(0), None);
+
+        // 3 is a right child
+        assert_eq!(tree.classify(idx_3), Some(Direction::Right));
+
+        // 3 is a left child
+        assert_eq!(tree.classify(idx_2), Some(Direction::Left));
+    }
+
+    #[test]
     pub fn get_parent() {
         let tree = create_tree(&[1, 2]);
 
@@ -306,22 +331,32 @@ mod tests {
     }
 
     #[test]
-    pub fn set_parent() {
+    pub fn set_parent_and_child() {
         let mut tree = create_tree(&[2, 1, 3]);
 
-        let idx_3 = tree.get_child_idx(0, ChildType::Right).unwrap();
-        let idx_2 = tree.get_child_idx(0, ChildType::Left).unwrap();
-        let el_3 = tree.nodes.get(idx_3).unwrap();
+        let idx_3 = tree.get_child_idx(0, Direction::Right).unwrap();
+        let idx_2 = tree.get_child_idx(0, Direction::Left).unwrap();
 
         // Change parent of 3 from 1 to 2
         tree.set_parent_index(idx_3, Some(idx_2));
+        tree.set_child_index(idx_2, Some(idx_3), Direction::Right);
+        tree.set_child_index(0, None, Direction::Right);
+
+        // Parent value is good
+        assert_eq!(tree.get_parent_idx(idx_3), Some(idx_2));
+
+        // Is right child of correct node
+        assert_eq!(tree.classify(idx_3), Some(Direction::Right));
+
+        // Is not connected to original parent
+        assert_eq!(tree.get_child_idx(0, Direction::Right), None);
     }
 
     #[test]
     pub fn get_child() {
         let tree = create_tree(&[1, 2]);
 
-        let two = tree.get_child_idx(0, ChildType::Right).unwrap();
+        let two = tree.get_child_idx(0, Direction::Right).unwrap();
 
         assert_eq!(two, 1);
         assert_eq!(get_key(&tree, two), 2);
@@ -337,5 +372,49 @@ mod tests {
         two.color = RbColor::Black;
 
         assert_eq!(two.color, RbColor::Black);
+    }
+
+    #[test]
+    pub fn rotate_left() {
+        let mut tree = create_tree(&[2, 1, 4, 3]);
+
+        let idx_2 = 0;
+        let idx_1 = tree.get_child_idx(idx_2, Direction::Left).unwrap();
+        let idx_4 = tree.get_child_idx(idx_2, Direction::Right).unwrap();
+        let idx_3 = tree.get_child_idx(idx_4, Direction::Left).unwrap();
+
+        tree.rotate(0, Direction::Left);
+
+        // 2 is left child of 4
+        assert_eq!(tree.classify(idx_2), Some(Direction::Left));
+
+        // 3 is right child of 2
+        assert_eq!(tree.classify(idx_3), Some(Direction::Right));
+
+        // 4 is root
+        assert_eq!(tree.root, Some(idx_4));
+    }
+
+    #[test]
+    pub fn rotate_right() {
+        let mut tree = create_tree(&[2, 0, 1, 4]);
+
+        let idx_2 = 0;
+        let idx_0 = tree.get_child_idx(idx_2, Direction::Left).unwrap();
+        let idx_4 = tree.get_child_idx(idx_2, Direction::Right).unwrap();
+        let idx_1 = tree.get_child_idx(idx_0, Direction::Right).unwrap();
+
+        tree.rotate(idx_2, Direction::Right);
+
+        dbg!(&tree.nodes);
+
+        // 2 is right child of 0
+        assert_eq!(tree.classify(idx_2), Some(Direction::Right));
+
+        // 1 is left child of 2
+        assert_eq!(tree.classify(idx_1), Some(Direction::Left));
+
+        // 0 is root
+        assert_eq!(tree.root, Some(idx_0));
     }
 }
