@@ -1,4 +1,4 @@
-use std::{mem::swap, panic, vec};
+use std::{fmt::Display, mem::swap, panic, vec};
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub enum RbColor {
@@ -131,7 +131,7 @@ impl RbTree {
 
         if let Some(j) = g_idx {
             // Update child values for grandparent
-            match self.classify(r_idx) {
+            match self.classify(idx) {
                 Some(t) => self.set_child_index(j, Some(r_idx), t),
                 None => { panic!("Right subtree was expected to have a parent") }
             }
@@ -209,56 +209,59 @@ impl RbTree {
 
     fn rb_insert_fix(&mut self, idx: usize) {
         let mut idx = idx;
-        let mut p_idx = self.get_parent_idx(idx).unwrap();
+        let mut p_idx: usize;
+
+        if let Some(i) = self.get_parent_idx(idx) {
+            p_idx = i;
+        }
+        else {
+            self.set_color(idx, RbColor::Black);
+            return;
+        }
         
         while self.get_color(p_idx).is_some_and(|c| c == RbColor::Red) {
             // Can unwrap because of the red-black properties
             let g_idx = self.get_parent_idx(p_idx).unwrap();
+            let p_dir = self.classify(p_idx).unwrap();
+            let p_dir_inv = p_dir.invert();
 
-            if self.get_child_idx(g_idx, Direction::Left)
-                .is_some_and(|i| i == p_idx) {
-                // The parent is a left child
+            // The parent is a left child
+            
+            // Get right uncle
+            let u_idx = self.get_child_idx(g_idx, p_dir_inv);
+            let u_color = u_idx
+                .and_then(|i| self.get_color(i))
+                .unwrap_or(RbColor::Black);
+            
+            if u_color == RbColor::Red {
+                // Uncle is red, invert colors
+                self.set_color(p_idx, RbColor::Black);
+                self.set_color(u_idx.unwrap(), RbColor::Black);
+
+                // Only invert the grandparent if its not the root.
+                if !self.is_root(g_idx) { self.set_color(g_idx, RbColor::Red); }
+
+                // Move up the tree
+                idx = g_idx;
                 
-                // Get right uncle
-                let u_idx = self.get_child_idx(g_idx, Direction::Right);
-                let u_color = u_idx.and_then(|i| self.get_color(i));
-                
-                if u_color.is_some_and(|c| c == RbColor::Red) {
-                    let g_root = self.is_root(g_idx);
-
-                    // Uncle is red, invert colors
-                    self.set_color(p_idx, RbColor::Black);
-
-                    // Only invert the grandparent if its not the root.
-                    if !g_root { self.set_color(g_idx, RbColor::Red); }
-
-                    // Only invert uncle if it exists (since a null leaf is always black)
-                    if let Some(i) = u_idx {
-                        self.set_color(i, RbColor::Black);
-                    }
-
-                    // Move up the tree
-                    idx = g_idx;
-                    
-                    // Since the root is always black, we can set p_idx to point to
-                    // g_idx in case g_idx is the root, which will make the while loop terminate.
-                    p_idx = self.get_parent_idx(g_idx).unwrap_or(g_idx);
-                }
-                else {
-                    if self.get_child_idx(p_idx, Direction::Right)
-                        .is_some_and(|i| i == idx) {
-                        // If the node is a right child, rotate left
-                        swap(&mut idx, &mut p_idx);
-                        self.rotate(idx, Direction::Left);
-                    }
-                    
-                    self.set_color(p_idx, RbColor::Black);
-                    self.set_color(g_idx, RbColor::Red);
-                    self.rotate(g_idx, Direction::Right);
-                }
+                // Since the root is always black, we can set p_idx to point to
+                // g_idx in case g_idx is the root, which will make the while loop terminate.
+                p_idx = self.get_parent_idx(g_idx).unwrap_or(g_idx);
             }
             else {
-                // The parent is a right child
+                if self.classify(idx) == Some(p_dir_inv) {
+                    // If the node is a right child, rotate left
+                    swap(&mut idx, &mut p_idx);
+                    dbg!(&self.nodes);
+                    println!("Rotating on {idx} with dir {p_dir:?}");
+                    self.rotate(idx, p_dir);
+                }
+
+                dbg!(&self.nodes);
+                
+                self.set_color(p_idx, RbColor::Black);
+                self.set_color(g_idx, RbColor::Red);
+                self.rotate(g_idx, p_dir_inv);
             }
         }
     }
@@ -268,6 +271,12 @@ impl RbTree {
         self.rb_insert_fix(idx);
     }
 
+}
+
+impl Display for RbTree {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -406,8 +415,6 @@ mod tests {
 
         tree.rotate(idx_2, Direction::Right);
 
-        dbg!(&tree.nodes);
-
         // 2 is right child of 0
         assert_eq!(tree.classify(idx_2), Some(Direction::Right));
 
@@ -416,5 +423,19 @@ mod tests {
 
         // 0 is root
         assert_eq!(tree.root, Some(idx_0));
+    }
+
+    #[test]
+    pub fn insert_with_rotations() {
+        let mut tree = RbTree::new();
+
+        tree.insert(6);
+        tree.insert(1);
+        tree.insert(4);
+        tree.insert(7);
+        tree.insert(5);
+        tree.insert(8);
+
+        dbg!(&tree.nodes);
     }
 }
