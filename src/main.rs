@@ -1,8 +1,12 @@
-use std::{dbg, error::Error, io::{self}, println};
+use std::{
+    error::Error,
+    io::{self},
+    println,
+};
 
-use redblacktree::RbTree;
+use redblacktree::tree::RbTree;
 
-fn main() -> Result<(), Box<dyn Error>>{
+fn main() -> Result<(), Box<dyn Error>> {
     let mut tree = RbTree::new();
 
     let mut buf = String::new();
@@ -16,9 +20,8 @@ fn main() -> Result<(), Box<dyn Error>>{
         if let Ok(choice) = trimmed.parse::<u32>() {
             tree.insert(choice);
 
-            dbg!(&tree);
-        }
-        else {
+            println!("Tree after insert:\n{tree}");
+        } else {
             if trimmed == "q" {
                 running = false;
                 println!("Quitting.");

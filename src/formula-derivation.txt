@@ -1,0 +1,278 @@
+floor(log_2(n)) + 1
+          5                --> s = ?, b = ?, p = 10
+    4           4         --> s = 11, b = 15, p = 4
+ 2     5     2     4      --> s = 5, b = 7, p = 1
+2 1   3 4   5 2   3 2     --> s = 1, b = 3, p = 0
+
+last level: 2^{floor(log_2(n))} = L
+ - Small skips: L / 2 = s
+ - Big skips: (L / 2) - 1 = b
+ - Full width: s + (b * 3) + L
+
+                      5B                        --> i = 4
+          5                       5            --> i = 3
+    4           4           4           4      --> i = 2
+ 2     5     2     4     2     4     2     4   --> i = 1
+2 1   3 4   5 2   3 2   3B 2   3 2   3 2   3 2
+
+Inner skip length for level i (i = 0.. floor(log_2(n)) - 1 ): s_i = 2 * s_{i-1} + 1 ==> s_i = 3 * 2^i - 1
+ - Leaf level has alternating skip of 1 and 3
+
+Outer padding for level i: p_i = p_{i-1} + floor(s_i / 2) + 1 ==> Same as: p_i = ceil(p_{i+1} / 2) - 1
+ - Given root level padding = floor((s + (b * 3) + L) / 2)
+
+                             40
+             20                              20
+     20              20              20              20
+ 20      40      20      40      20      40      20      40
+20 40   20 40   20 40   20 40   20 40   20 40   20 40   20 40
+
+                                     200
+                 200                                     200
+       200                 200                 200                 200
+  200       400       200       400       200       400       200       400
+200 400   200 400   200 400   200 400   200 400   200 400   200 400   200 400
+
+                    2000
+        2000                    2000
+   2000        2000        2000        4000
+2000 4000   2000 4000   2000 2000   4000 4000
+
+                        20000
+          20000                       20000
+   20000         20000         20000         20000
+20000 40000   20000 40000   20000 40000   20000 20000
+
+           200000
+   200000          200000
+200000 400000   200000 400000
+
+             2000000
+    2000000           2000000
+2000000 4000000   2000000 4000000
+
+              20000000
+    20000000            20000000
+20000000 40000000   20000000 40000000
+
+
+                200000000                                   200000000
+     200000000             200000000             200000000             200000000
+200000000 400000000   200000000 400000000   200000000 200000000   200000000 200000000
+
+d = 2
+s_i = 2 * s_{i-1} + 1
+p_i = p_{i-1} + floor(s_{i-1} / 2) + 1
+p_1 = 1, p_2 = 7
+
+d = 3
+
+The parent is centered on the gap below. If the gap is 1, 
+then the number directly above the gap is the ceil((d - 1) / 2) + 1 -th digit.
+If it is 3, those digits are the ceil((d - 3))
+
+FORMULA FOR p_i = floor(p_{i+1} / 2) - 1 (not good for d >= 3)
+FORMULA FOR p_1: ceil(d / 2) (!!!)
+FORMULA FOR s_i: 2 * s_{i-1} + d
+FORMULA FOR s_1: ?
+
+Next level's padding is almost the same as last levels skip? For 3, its the same
+
+padding is -1 last skip
+   - if d = 1 0.5
+   - if d = 2 1
+
+padding is same as last level skip
+   - if d = 3 1.5
+   - if d = 4 2
+
+padding is +1 last skip
+   - if d = 5 2.5
+   - if d = 6 3
+
+padding is +2 last skip
+   - if d = 7 3.5
+   - if d = 8 4
+
+p_i = s_{i-1} + ceil(d / 2) - 2
+
+----------------------------------------
+FORMULA FOR NEXT SKIP (GENERALIZED)
+s_{i-1} = p_i - ceil(d / 2) + 2
+s_{i-1} = (s_{i+1} - d) / 2
+----------------------------------------
+
+padding is floor(p_{i+1} / 2) - 1
+   - if d = 1
+   - if d = 2
+   - if d = 3
+
+padding is floor(p_{i+1} / 2) - 2
+   - if d = 4, 5, 6, 7
+
+padding is floor(p_{i+1} / 2) - 3
+   - if d = 8, 9 
+
+p_i = 2 * p_{i-1} + d?
+   - yes, for d = 3
+
+p_i = 2 * p_{i-1} + d + c
+   - c = 1, if d = 1, d = 2
+   - c = 0, if d = 3,
+   - c = -1, if d = 4, d = 5, d = 6
+   - c = -2, if d = 7
+
+a_{i} is a growth factor that tracks the width of the subtree of a node on level {i}.
+Since in the base case {i=1} the width of the subtree of the first node on that level
+is 2 * d + 1 (two children, 1 space between them), the next level has 2 * a_{i} + 3 
+(twice as many leaf nodes, 3 space between each group). We need a correction term to account
+for the centering of the keys (since )
+
+p_{i+1} = a_{i + 1} - c, where a_{i + 1} = 2 * a_i + 3, a_{1} = 2 * d + 1
+   - c = -1, if d = 1 0.5
+   - c = 0, if d = 2, d = 3 1, 1.5
+   - c = 1, if d = 4, d = 5 2, 2.5
+   - c = 2, if d = 6, d = 7, 3, 3.5
+   - c = 3, if d = 8, d = 9
+   
+   - c = floor(d / 2) - 1
+
+------------
+SOLVED p_{i+1} recursion (not much use but still cool)
+p_{i} = (d + 2) * 2^i - floor(d / 2) - 2
+-------------
+
+a_{i-1} = (a_{i} - 3) / 2
+p_{i-1} = a_{i-1} - floor(d / 2) + 1
+
+Since the root level has a calculatable width, we can calculate a_{n}
+a_{n} = p_{n} + floor(d / 2) - 1
+and p_{n} = floor((s + (b * 3) + L * d) / 2)
+
+
+==========================
+FINAL RUNNING FORMULAS
+
+INNER SKIP (for level i=n-1..1, where n is the height of the tree):
+s_{i-1} = (s_{i} - d) / 2 (initialized to p_i - ceil(d / 2) + 2)
+
+OUTER PADDING (for level i):
+p_{i} = a_{i} - floor(d / 2) + 1, where a_{i-1} = (a_{i} - 3) / 2, (a_i initialized to (d + 2) * 2^{n-2} - 3)
+
+==========================
+
+TEST (d = 5)
+                        20000                         --> i = 3, p = 24
+          20000                       20000           --> i = 2, p = 10, s = 23
+   20000         20000         20000         20000    --> i = 1, p = 3, s = 9
+20000 40000   20000 40000   20000 40000   20000 20000
+
+I. Calculating root padding and skip:
+floor(d / 2) - 1 = ### 1 ###
+ceil(d / 2) - 2 = ### 1 ###
+
+a_3 = (d + 2) * 2^{3 - 1} - 3 = 7 * 4 - 3 = 25
+p_3 = 25 - 1 = 24 [CORRECT]
+
+II. Calculating next level:
+a_2 = (a_3 - 3) / 2 = 22 / 2 = 11
+p_2 = 11 - (floor(d / 2) - 1) = 11 - 1 = 10 [CORRECT]
+s_2 = p_3 - (ceil(d / 2) - 2) = p_3 - 1 = 23 [CORRECT]
+
+III. Another level:
+a_1 = (a_2 - 3) / 2 = 8 / 2 = 4
+p_1 = 4 - 1 = 3 [CORRECT]
+s_1 = p_2 - 1 = 10 - 1 = 9 [CORRECT]
+
+[THE ALGORITHM IS CORRECT FOR d = 5]
+
+TEST (d = 2)
+
+                             40                                --> i = 4, p = 29
+             20                              20                --> i = 3, p = 13, s = 30
+     20              20              20              20        --> i = 2, p = 5, s = 14
+ 20      40      20      40      20      40      20      40    --> i = 1, p = 1, s = 6
+20 40   20 40   20 40   20 40   20 40   20 40   20 40   20 40
+
+I. Calculating root padding and skip:
+floor(d / 2) - 1 = ### 0 ###
+ceil(d / 2) - 2 = ### -1 ###
+
+a_4 = (d + 2) * 2^{4 - 1} - 3 = 4 * 8 - 3 = 29
+p_4 = 29 - (floor(d / 2) - 1) = 29 - 0 = 29 [CORRECT]
+
+II. Calculating next level:
+a_3 = (a_4 - 3) / 2 = 26 / 2 = 13
+p_3 = 13 - (floor(d / 2) - 1) = 13 - 0 = 13 [CORRECT]
+s_3 = p_4 - (ceil(d / 2) - 2) = p_4 + 1 = 30 [CORRECT]
+
+III. Another level:
+a_2 = (a_3 - 3) / 2 = 10 / 2 = 5
+p_2 = 5 - 0 = 5 [CORRECT]
+s_2 = p_3 + 1 = 13 + 1 = 14 [CORRECT]
+
+IV. Another level:
+a_1 = (a_2 - 3) / 2 = 2 / 2 = 1
+p_1 = 1 - 0 = 1 [CORRECT]
+s_1 = p_2 + 1 = 5 + 1 = 6 [CORRECT]
+
+[THE ALGORITHM IS CORRECT FOR d = 2]
+
+
+======================================
+FINAL ALGORITHM
+=======================================
+
+Given a tree with height "h", we want to display it using a terminal, where we
+want to draw the tree top-down, row by row (from i = 0 to i = h - 1).
+
+Let "d" be the number of digits of the largest key in the tree. When printing keys,
+each key is padded on the left side with zeros to fill up exactly "d" space.
+
+To make the result look good, we add an outer padding value before the first 
+node (denoted p_i), and a skip value between two nodes (denoted s_i). Additionally,
+the leaf level has a padding value of 0 and a skip value that is alternating from 1 to 3.
+
+Note that the TREE_LEVEL_NODES method returns a list of elements on the specified level,
+also including empty spaces. This means that if a level has 4 slots, but 1 is actually used,
+the method will return a list of length 4, with 3 NIL elements, and one real key.
+
+The algorithm is then the following:
+
+FUNCTION TREE_PRINT
+   correction_p = floor(d / 2) - 1
+   correction_s = ceil(d / 2) - 2
+
+   IF h > 1
+      a = 0
+      p = 0
+   ELSE
+      a = (d + 2) * pow(2, h - 2) - 3
+      p = a - correction_p
+   END IF
+   s = 0
+
+   // Traverse all non-leaf levels
+   FOR i IN 0..(h-2)
+      // Print padding
+      print(REPEAT_CHAR(' ', p))
+
+      // Print keys with skips
+      FOR x in TREE_LEVEL_NODES(i)
+         print(LEFT_PAD( KEY[x], d )) // KEY[NIL] is ''
+
+         IF x IS NOT LAST
+            print(REPEAT_CHAR(' ', s))
+         END IF
+      END FOR
+
+      print('\n')
+
+      a = (a - 3) / 2
+      s = p - correction_s
+      p = a - correction_p
+   END FOR
+
+   // Print leaf nodes with alternating skip of 1 and 3
+   ...
+END FUNCTION
