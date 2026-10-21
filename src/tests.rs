@@ -1,8 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use std::{assert_eq};
+    use std::{assert_eq, println};
 
-use crate::tree::{
+    use crate::tree::{
         RbTree,
         enums::{Direction, RbColor},
     };
@@ -11,7 +11,7 @@ use crate::tree::{
         tree.nodes.get(idx).expect("invalid index").key
     }
 
-    fn create_tree(values: &[u32]) -> RbTree {
+    fn create_bst_tree(values: &[u32]) -> RbTree {
         let mut tree = RbTree::new();
 
         for value in values {
@@ -22,8 +22,8 @@ use crate::tree::{
     }
 
     #[test]
-    pub fn tree_insert_test() {
-        let tree = create_tree(&[5, 3, 4]);
+    pub fn tree_insert() {
+        let tree = create_bst_tree(&[5, 3, 4]);
 
         let five = tree.nodes.get(0).unwrap();
         let five_l = five.left.unwrap();
@@ -36,8 +36,23 @@ use crate::tree::{
     }
 
     #[test]
+    pub fn tree_delete() {
+        let key_to_delete = 12;
+
+        let mut tree = RbTree::new();
+        tree.insert_all(&[1, 2, 3, 5, 10, 9, 12, 4, 7]);
+        let idx = tree.find_idx(key_to_delete).unwrap();
+
+        println!("{tree}");
+        tree.delete_idx(idx);
+        println!("{tree}");
+
+        assert!(tree.find(key_to_delete).is_none())
+    }
+
+    #[test]
     pub fn classify() {
-        let tree = create_tree(&[1, 3, 2]);
+        let tree = create_bst_tree(&[1, 3, 2]);
         let idx_3 = tree.get_child_idx(0, Direction::Right).unwrap();
         let idx_2 = tree.get_child_idx(idx_3, Direction::Left).unwrap();
 
@@ -53,7 +68,7 @@ use crate::tree::{
 
     #[test]
     pub fn get_parent() {
-        let tree = create_tree(&[1, 2]);
+        let tree = create_bst_tree(&[1, 2]);
 
         let one = tree.nodes.get(0).unwrap();
         let two = tree.nodes.get(one.right.unwrap()).unwrap();
@@ -63,7 +78,7 @@ use crate::tree::{
 
     #[test]
     pub fn set_parent_and_child() {
-        let mut tree = create_tree(&[2, 1, 3]);
+        let mut tree = create_bst_tree(&[2, 1, 3]);
 
         let idx_3 = tree.get_child_idx(0, Direction::Right).unwrap();
         let idx_2 = tree.get_child_idx(0, Direction::Left).unwrap();
@@ -85,7 +100,7 @@ use crate::tree::{
 
     #[test]
     pub fn get_child() {
-        let tree = create_tree(&[1, 2]);
+        let tree = create_bst_tree(&[1, 2]);
 
         let two = tree.get_child_idx(0, Direction::Right).unwrap();
 
@@ -95,7 +110,7 @@ use crate::tree::{
 
     #[test]
     pub fn get_color() {
-        let mut tree = create_tree(&[1, 2]);
+        let mut tree = create_bst_tree(&[1, 2]);
         let two = tree.get_mut(1);
 
         assert_eq!(two.color, RbColor::Red);
@@ -107,7 +122,7 @@ use crate::tree::{
 
     #[test]
     pub fn rotate_left() {
-        let mut tree = create_tree(&[2, 1, 4, 3]);
+        let mut tree = create_bst_tree(&[2, 1, 4, 3]);
 
         let idx_2 = 0;
         let idx_4 = tree.get_child_idx(idx_2, Direction::Right).unwrap();
@@ -127,7 +142,7 @@ use crate::tree::{
 
     #[test]
     pub fn rotate_right() {
-        let mut tree = create_tree(&[2, 0, 1, 4]);
+        let mut tree = create_bst_tree(&[2, 0, 1, 4]);
 
         let idx_2 = 0;
         let idx_0 = tree.get_child_idx(idx_2, Direction::Left).unwrap();

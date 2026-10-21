@@ -1,5 +1,8 @@
 use colored::Colorize;
-use std::{fmt::{Display, Write}, format};
+use std::{
+    fmt::{Display, Write},
+    format, vec,
+};
 
 use crate::tree::{RbTree, enums::RbColor};
 
@@ -23,17 +26,16 @@ impl Display for RbTree {
         if height > 1 {
             growth = (digits + 2) * 2_i32.pow(height - 2) - 3;
             padding = growth - correction_p;
-        }
-        else {
+        } else {
             growth = 0;
             padding = 0;
         }
 
         // Indicies to check
         let mut indicies: Vec<Option<usize>> = vec![self.root];
-        
+
         // We traverse the tree level-by-level, starting on the root level,
-        // then we write to the formatter, update the running variables, 
+        // then we write to the formatter, update the running variables,
         // and gather the indicies of the next level.
         for l in 0..=height {
             // Add padding if necessary
@@ -56,24 +58,19 @@ impl Display for RbTree {
                         })
                         .unwrap_or(" ".repeat(digits as usize).into());
 
-                let skip_count = if l < height - 1 { 
-                    skip 
-                } else { 
-                    if x.0 % 2 == 0 {
-                        1
-                    }
-                    else {
-                        3
-                    }
+                let skip_count = if l < height - 1 {
+                    skip
+                } else {
+                    if x.0 % 2 == 0 { 1 } else { 3 }
                 } as usize;
 
                 let formatted = format!(
-                    "{:0>digits$}{}", 
-                    key, 
-                    " ".repeat(skip_count), 
+                    "{:0>digits$}{}",
+                    key,
+                    " ".repeat(skip_count),
                     digits = digits as usize
                 );
-                
+
                 f.write_str(formatted.as_str())?;
             }
 

@@ -45,7 +45,7 @@ impl RbTree {
                 if let Some(l) = node.left {
                     queue.push_back(l);
                 }
-    
+
                 if let Some(r) = node.right {
                     queue.push_back(r);
                 }
@@ -66,8 +66,8 @@ impl RbTree {
         })
     }
 
-    pub(crate) fn get_color(&self, idx: usize) -> Option<RbColor> {
-        self.nodes.get(idx).map(|e| e.color)
+    pub(crate) fn get_color(&self, idx: Option<usize>) -> RbColor {
+        idx.map(|i| self.get(i).color).unwrap_or(RbColor::Black)
     }
 
     pub(crate) fn classify(&self, idx: usize) -> Option<Direction> {
@@ -76,8 +76,7 @@ impl RbTree {
 
         if parent.left == Some(idx) {
             return Some(Direction::Left);
-        }
-        else {
+        } else {
             return Some(Direction::Right);
         }
     }
@@ -96,7 +95,7 @@ impl RbTree {
             panic!("invalid index");
         }
 
-        let node= self.get_mut(idx);
+        let node = self.get_mut(idx);
         match direction {
             Direction::Left => node.left = value,
             Direction::Right => node.right = value,
@@ -112,9 +111,7 @@ impl RbTree {
     }
 
     pub(crate) fn is_root(&self, idx: usize) -> bool {
-        self.root
-            .map(|i| idx == i)
-            .unwrap_or(false)
+        self.root.map(|i| idx == i).unwrap_or(false)
     }
 
     pub(crate) fn min_idx(&self) -> Option<usize> {
@@ -164,14 +161,12 @@ impl RbTree {
             }
 
             successor_idx = Some(next_idx);
-        }
-        else {
-            // If the node doesn't have a right child, move up until 
+        } else {
+            // If the node doesn't have a right child, move up until
             // we are coming from a left child.
             let mut current_idx = idx;
-            
-            while let Some(parent_idx) = self.get_parent_idx(current_idx)
-            {
+
+            while let Some(parent_idx) = self.get_parent_idx(current_idx) {
                 if self.classify(current_idx) == Some(other_direction) {
                     successor_idx = Some(parent_idx);
                     break;

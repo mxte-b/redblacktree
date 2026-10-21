@@ -76,7 +76,7 @@ impl RbTree {
             return;
         }
 
-        while self.get_color(p_idx).is_some_and(|c| c == RbColor::Red) {
+        while self.get_color(Some(p_idx)) == RbColor::Red {
             // Can unwrap because of the red-black properties
             let g_idx = self.get_parent_idx(p_idx).unwrap();
             let p_dir = self.classify(p_idx).unwrap();
@@ -86,9 +86,7 @@ impl RbTree {
 
             // Get right uncle
             let u_idx = self.get_child_idx(g_idx, p_dir_inv);
-            let u_color = u_idx
-                .and_then(|i| self.get_color(i))
-                .unwrap_or(RbColor::Black);
+            let u_color = self.get_color(u_idx);
 
             if u_color == RbColor::Red {
                 // Uncle is red, invert colors
@@ -121,8 +119,10 @@ impl RbTree {
     }
 
     pub fn insert(&mut self, key: u32) {
-        let idx = self.tree_insert(key);
-        self.rb_insert_fix(idx);
+        if self.find(key).is_none() {
+            let idx = self.tree_insert(key);
+            self.rb_insert_fix(idx);
+        }
     }
 
     pub fn insert_all(&mut self, values: &[u32]) {
